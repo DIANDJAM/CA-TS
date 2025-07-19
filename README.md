@@ -1,3 +1,2 @@
-# California Legislative Transcripts
+# CLT
 
-This repository contains searchable transcripts from CA legislative hearings.
