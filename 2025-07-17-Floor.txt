@@ -1,4 +1,7 @@
-WEBVTT
+Date: July 17, 2025
+Type: Floor Session
+Chamber: Assembly
+---
 
 00:36:42.500 --> 00:36:44.602
 THE ASSEMBLY IS NOW IN SESSION.
