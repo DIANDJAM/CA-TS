@@ -3,8 +3,11 @@ name: Update README
 on:
   push:
     paths:
-      - '20**/**/*.txt'  # Triggers when transcript files are added/changed
-  workflow_dispatch:  # Allows manual trigger
+      - '20**/**/*.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   update-readme:
@@ -13,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Make script executable
         run: chmod +x generate-readme.sh
@@ -22,8 +27,8 @@ jobs:
       
       - name: Commit and push if changed
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add README.md
           if git diff --staged --quiet; then
             echo "No changes to README"
