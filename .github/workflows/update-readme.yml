@@ -1,1 +1,33 @@
+name: Update README
 
+on:
+  push:
+    paths:
+      - '20**/**/*.txt'  # Triggers when transcript files are added/changed
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Make script executable
+        run: chmod +x generate-readme.sh
+      
+      - name: Generate README
+        run: ./generate-readme.sh
+      
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          if git diff --staged --quiet; then
+            echo "No changes to README"
+          else
+            git commit -m "Auto-update README with new transcripts"
+            git push
+          fi
