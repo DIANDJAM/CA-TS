@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-baseURL="https://diandjam.github.io/ca-Transcripts"
+baseURL="https://diandjam.github.io/CA-TS"
 repoPath="."
 
 # Start README
