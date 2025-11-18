@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Legislative Transcripts Archive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #bdc3c7;
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .search-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            transition: border-color 0.3s;
+        }
+
+        #searchInput:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .transcript-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .year-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .year-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .month-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .month-title {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .transcript-list {
+            list-style: none;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .transcript-item {
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .transcript-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .transcript-link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .transcript-link:hover {
+            text-decoration: underline;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .transcript-content {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-top: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>CA Legislative Transcripts Archive</h1>
+            <p class="subtitle">Searchable transcripts from California legislative hearings</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-box">
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search transcripts by filename, date, or committee code..."
+            >
+        </div>
+
+        <div id="transcriptGrid" class="transcript-grid">
+            <div class="loading">Loading transcripts...</div>
+        </div>
+    </div>
+
+    <div id="transcriptModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <div id="modalContent" class="transcript-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let transcripts = [];
+
+        // Load transcript list
+        async function loadTranscripts() {
+            try {
+                // Scan for transcript files
+                const years = ['2025', '07', '08', '09'];
+                const allTranscripts = [];
+
+                for (const year of years) {
+                    try {
+                        const response = await fetch(`${year}/`);
+                        if (response.ok) {
+                            const html = await response.text();
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const links = doc.querySelectorAll('a');
+
+                            links.forEach(link => {
+                                const href = link.getAttribute('href');
+                                if (href && href.endsWith('.txt')) {
+                                    const filename = href.split('/').pop();
+                                    const match = filename.match(/^(\d{8})-(.+)\.txt$/);
+                                    if (match) {
+                                        const date = match[1];
+                                        const code = match[2];
+                                        const displayYear = date.substring(0, 4);
+                                        const month = date.substring(4, 6);
+
+                                        allTranscripts.push({
+                                            year: displayYear,
+                                            month: month,
+                                            date: date,
+                                            code: code,
+                                            filename: filename,
+                                            path: `${year}/${filename}`
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.log(`Could not load from ${year}:`, e);
+                    }
+                }
+
+                transcripts = allTranscripts.sort((a, b) => {
+                    if (a.year !== b.year) return b.year - a.year;
+                    if (a.month !== b.month) return b.month - a.month;
+                    return b.date.localeCompare(a.date);
+                });
+
+                displayTranscripts(transcripts);
+            } catch (error) {
+                console.error('Error loading transcripts:', error);
+                document.getElementById('transcriptGrid').innerHTML =
+                    '<div class="no-results">Error loading transcripts. Please make sure you\'re running a local web server.</div>';
+            }
+        }
+
+        function getMonthName(month) {
+            const months = {
+                '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+                '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+                '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+            };
+            return months[month] || month;
+        }
+
+        function displayTranscripts(transcriptList) {
+            const grid = document.getElementById('transcriptGrid');
+
+            if (transcriptList.length === 0) {
+                grid.innerHTML = '<div class="no-results">No transcripts found matching your search.</div>';
+                return;
+            }
+
+            // Group by year and month
+            const grouped = {};
+            transcriptList.forEach(t => {
+                if (!grouped[t.year]) grouped[t.year] = {};
+                if (!grouped[t.year][t.month]) grouped[t.year][t.month] = [];
+                grouped[t.year][t.month].push(t);
+            });
+
+            let html = '';
+            Object.keys(grouped).sort((a, b) => b - a).forEach(year => {
+                html += `<div class="year-section">
+                    <h2 class="year-title">${year}</h2>`;
+
+                Object.keys(grouped[year]).sort((a, b) => b - a).forEach(month => {
+                    const monthName = getMonthName(month);
+                    html += `<div class="month-section">
+                        <h3 class="month-title">${monthName} ${year}</h3>
+                        <ul class="transcript-list">`;
+
+                    grouped[year][month].forEach(t => {
+                        html += `<li class="transcript-item">
+                            <a href="#" class="transcript-link" data-path="${t.path}" data-filename="${t.filename}">
+                                ${t.filename} (${t.code})
+                            </a>
+                        </li>`;
+                    });
+
+                    html += `</ul></div>`;
+                });
+
+                html += `</div>`;
+            });
+
+            grid.innerHTML = html;
+
+            // Add click handlers
+            document.querySelectorAll('.transcript-link').forEach(link => {
+                link.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const path = e.target.getAttribute('data-path');
+                    const filename = e.target.getAttribute('data-filename');
+                    await viewTranscript(path, filename);
+                });
+            });
+        }
+
+        async function viewTranscript(path, filename) {
+            const modal = document.getElementById('transcriptModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            modalTitle.textContent = filename;
+            modalContent.textContent = 'Loading...';
+            modal.style.display = 'block';
+
+            try {
+                const response = await fetch(path);
+                const text = await response.text();
+                modalContent.textContent = text;
+            } catch (error) {
+                modalContent.textContent = 'Error loading transcript: ' + error.message;
+            }
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm === '') {
+                displayTranscripts(transcripts);
+                return;
+            }
+
+            const filtered = transcripts.filter(t =>
+                t.filename.toLowerCase().includes(searchTerm) ||
+                t.code.toLowerCase().includes(searchTerm) ||
+                t.date.includes(searchTerm)
+            );
+
+            displayTranscripts(filtered);
+        });
+
+        // Modal close handlers
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('transcriptModal').style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('transcriptModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Load transcripts on page load
+        loadTranscripts();
+    </script>
+</body>
+</html>
