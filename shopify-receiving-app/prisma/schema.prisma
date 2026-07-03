@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+// Required by @shopify/shopify-app-session-storage-prisma
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// A receiving session: one physical "receiving event" (e.g. unpacking a shipment).
+// Lines accumulate as barcodes are scanned; committing applies all quantity
+// deltas to Shopify inventory in a single inventoryAdjustQuantities call.
+model ReceivingSession {
+  id          String          @id @default(cuid())
+  shop        String
+  name        String
+  status      String          @default("open") // open | committed
+  locationId  String?
+  createdAt   DateTime        @default(now())
+  committedAt DateTime?
+  lines       ReceivingLine[]
+
+  @@index([shop, status])
+}
+
+model ReceivingLine {
+  id              String           @id @default(cuid())
+  sessionId       String
+  session         ReceivingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  barcode         String
+  variantId       String // gid://shopify/ProductVariant/...
+  productId       String // gid://shopify/Product/...
+  inventoryItemId String // gid://shopify/InventoryItem/...
+  productTitle    String
+  variantTitle    String?
+  sku             String?
+  quantity        Int              @default(1)
+  unitCost        Decimal? // cost per item at scan time (null if not set in Shopify)
+  originalPrice   Decimal // price at scan time
+  currentPrice    Decimal // price after any margin adjustment in this session
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([sessionId, variantId])
+  @@index([sessionId])
+}
