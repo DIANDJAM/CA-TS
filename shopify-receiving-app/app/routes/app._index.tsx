@@ -23,6 +23,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       name: receivingSession.name,
       status: receivingSession.status,
       lineCount: receivingSession._count.lines,
+      unmatchedCount: receivingSession._count.unmatched,
       createdAt: receivingSession.createdAt.toISOString(),
     })),
   };
@@ -65,6 +66,7 @@ export default function Dashboard() {
                   { title: "Session" },
                   { title: "Status" },
                   { title: "Products" },
+                  { title: "Unmatched" },
                   { title: "Created" },
                 ]}
               >
@@ -93,6 +95,15 @@ export default function Dashboard() {
                       </Badge>
                     </IndexTable.Cell>
                     <IndexTable.Cell>{receivingSession.lineCount}</IndexTable.Cell>
+                    <IndexTable.Cell>
+                      {receivingSession.unmatchedCount > 0 ? (
+                        <Badge tone="warning">
+                          {String(receivingSession.unmatchedCount)}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </IndexTable.Cell>
                     <IndexTable.Cell>
                       {new Date(receivingSession.createdAt).toLocaleString()}
                     </IndexTable.Cell>

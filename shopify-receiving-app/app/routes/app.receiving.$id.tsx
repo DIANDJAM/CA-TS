@@ -23,7 +23,9 @@ import {
   addScan,
   getSession,
   markCommitted,
+  recordUnmatchedScan,
   removeLine,
+  resolveUnmatchedScan,
   setLinePrice,
   setLineQuantity,
 } from "../services/receiving.server";
@@ -90,6 +92,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           currentPrice: line.currentPrice.toString(),
         }),
       ),
+      unmatched: receivingSession.unmatched.map((scan) => ({
+        id: scan.id,
+        barcode: scan.barcode,
+        count: scan.count,
+        lastScannedAt: scan.lastScannedAt.toISOString(),
+      })),
     },
     locations,
   };
@@ -113,6 +121,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
         const matches = await findVariantsByBarcode(admin, barcode);
         if (matches.length === 0) {
+          await recordUnmatchedScan(receivingSession.id, barcode);
           return { intent, status: "not_found" as const, barcode };
         }
         if (matches.length > 1) {
@@ -145,6 +154,10 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       }
       case "remove-line": {
         await removeLine(String(formData.get("lineId")));
+        return { intent, status: "ok" as const };
+      }
+      case "resolve-unmatched": {
+        await resolveUnmatchedScan(String(formData.get("unmatchedId")));
         return { intent, status: "ok" as const };
       }
       case "set-price": {
@@ -243,6 +256,9 @@ export default function ReceivingSession() {
         setBarcode("");
         shopify.toast.show(`Added ${scanResult.productTitle}`);
         revalidator.revalidate();
+      } else if (scanResult.status === "not_found") {
+        setBarcode("");
+        revalidator.revalidate();
       }
       focusScanInput();
     }
@@ -296,7 +312,12 @@ export default function ReceivingSession() {
         </Badge>
       }
       backAction={{ url: "/app" }}
-      subtitle={`${receivingSession.lines.length} products · ${totalUnits} units`}
+      subtitle={
+        `${receivingSession.lines.length} products · ${totalUnits} units` +
+        (receivingSession.unmatched.length > 0
+          ? ` · ${receivingSession.unmatched.length} unmatched`
+          : "")
+      }
       secondaryActions={[
         {
           content: "Print all labels",
@@ -352,11 +373,11 @@ export default function ReceivingSession() {
               </form>
 
               {scanResult?.status === "not_found" && (
-                <Banner tone="warning" title="No product found">
+                <Banner tone="warning" title="Doesn't match inventory">
                   <p>
-                    No variant in this store has barcode{" "}
-                    <b>{scanResult.barcode}</b>. Add the barcode to the product
-                    in Shopify, then scan again.
+                    No product in this store has barcode{" "}
+                    <b>{scanResult.barcode}</b>. It's been flagged in the
+                    unmatched list below — keep scanning and resolve it later.
                   </p>
                 </Banner>
               )}
@@ -512,6 +533,70 @@ export default function ReceivingSession() {
             })}
           </IndexTable>
         </Card>
+
+        {receivingSession.unmatched.length > 0 && (
+          <Card>
+            <BlockStack gap="300">
+              <InlineStack gap="200" blockAlign="center">
+                <Text as="h2" variant="headingMd">
+                  Doesn't match inventory
+                </Text>
+                <Badge tone="warning">
+                  {String(receivingSession.unmatched.length)}
+                </Badge>
+              </InlineStack>
+              <Text as="p" tone="subdued">
+                These barcodes were scanned but match no product in the store.
+                Typical causes: the barcode was never entered on the Shopify
+                product, the product isn't in Shopify yet, or the supplier
+                shipped the wrong item. Fix the product in Shopify and re-scan,
+                or mark the flag resolved.
+              </Text>
+              <IndexTable
+                itemCount={receivingSession.unmatched.length}
+                selectable={false}
+                headings={[
+                  { title: "Barcode" },
+                  { title: "Times scanned" },
+                  { title: "Last scanned" },
+                  { title: "" },
+                ]}
+              >
+                {receivingSession.unmatched.map((scan, index) => (
+                  <IndexTable.Row id={scan.id} key={scan.id} position={index}>
+                    <IndexTable.Cell>
+                      <Text as="span" fontWeight="semibold">
+                        {scan.barcode}
+                      </Text>
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>{String(scan.count)}</IndexTable.Cell>
+                    <IndexTable.Cell>
+                      {new Date(scan.lastScannedAt).toLocaleTimeString()}
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>
+                      {isOpen && (
+                        <Button
+                          size="slim"
+                          onClick={() =>
+                            lineFetcher.submit(
+                              {
+                                intent: "resolve-unmatched",
+                                unmatchedId: scan.id,
+                              },
+                              { method: "post" },
+                            )
+                          }
+                        >
+                          Resolve
+                        </Button>
+                      )}
+                    </IndexTable.Cell>
+                  </IndexTable.Row>
+                ))}
+              </IndexTable>
+            </BlockStack>
+          </Card>
+        )}
 
         {printFetcher.data?.status === "error" && (
           <Banner tone="warning" title="Printing not available">

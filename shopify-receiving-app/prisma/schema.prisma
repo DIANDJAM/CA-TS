@@ -38,8 +38,26 @@ model ReceivingSession {
   createdAt   DateTime        @default(now())
   committedAt DateTime?
   lines       ReceivingLine[]
+  unmatched   UnmatchedScan[]
 
   @@index([shop, status])
+}
+
+// A scanned barcode that matched no variant in the store. Kept on the session
+// as an exception list so discrepancies survive past the scan moment and can
+// be resolved (wrong barcode in Shopify, product never entered, mispick from
+// the supplier) after the shipment is put away.
+model UnmatchedScan {
+  id             String           @id @default(cuid())
+  sessionId      String
+  session        ReceivingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  barcode        String
+  count          Int              @default(1)
+  firstScannedAt DateTime         @default(now())
+  lastScannedAt  DateTime         @updatedAt
+
+  @@unique([sessionId, barcode])
+  @@index([sessionId])
 }
 
 model ReceivingLine {

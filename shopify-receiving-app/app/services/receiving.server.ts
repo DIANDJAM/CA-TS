@@ -11,7 +11,7 @@ export function listSessions(shop: string) {
   return db.receivingSession.findMany({
     where: { shop },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { lines: true } } },
+    include: { _count: { select: { lines: true, unmatched: true } } },
     take: 50,
   });
 }
@@ -19,7 +19,10 @@ export function listSessions(shop: string) {
 export function getSession(shop: string, id: string) {
   return db.receivingSession.findFirst({
     where: { id, shop },
-    include: { lines: { orderBy: { updatedAt: "desc" } } },
+    include: {
+      lines: { orderBy: { updatedAt: "desc" } },
+      unmatched: { orderBy: { lastScannedAt: "desc" } },
+    },
   });
 }
 
@@ -61,6 +64,20 @@ export async function addScan(
       currentPrice: match.price,
     },
   });
+}
+
+/** Flag a barcode that matched nothing; re-scans bump the count. */
+export function recordUnmatchedScan(sessionId: string, barcode: string) {
+  return db.unmatchedScan.upsert({
+    where: { sessionId_barcode: { sessionId, barcode } },
+    create: { sessionId, barcode },
+    update: { count: { increment: 1 } },
+  });
+}
+
+/** Resolve (dismiss) an unmatched-scan flag once it's been dealt with. */
+export function resolveUnmatchedScan(id: string) {
+  return db.unmatchedScan.delete({ where: { id } });
 }
 
 export function setLineQuantity(lineId: string, quantity: number) {
