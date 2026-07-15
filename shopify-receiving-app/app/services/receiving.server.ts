@@ -1,4 +1,4 @@
-import db from "../db.server";
+import { db } from "../db.server";
 import type { VariantMatch } from "./shopify/variantLookup.server";
 
 /**
@@ -8,7 +8,7 @@ import type { VariantMatch } from "./shopify/variantLookup.server";
  */
 
 export function listSessions(shop: string) {
-  return db.receivingSession.findMany({
+  return db().receivingSession.findMany({
     where: { shop },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { lines: true, unmatched: true } } },
@@ -17,7 +17,7 @@ export function listSessions(shop: string) {
 }
 
 export function getSession(shop: string, id: string) {
-  return db.receivingSession.findFirst({
+  return db().receivingSession.findFirst({
     where: { id, shop },
     include: {
       lines: { orderBy: { updatedAt: "desc" } },
@@ -27,7 +27,7 @@ export function getSession(shop: string, id: string) {
 }
 
 export function createSession(shop: string, name: string) {
-  return db.receivingSession.create({
+  return db().receivingSession.create({
     data: { shop, name },
   });
 }
@@ -38,18 +38,18 @@ export async function addScan(
   barcode: string,
   match: VariantMatch,
 ) {
-  const existing = await db.receivingLine.findUnique({
+  const existing = await db().receivingLine.findUnique({
     where: { sessionId_variantId: { sessionId, variantId: match.variantId } },
   });
 
   if (existing) {
-    return db.receivingLine.update({
+    return db().receivingLine.update({
       where: { id: existing.id },
       data: { quantity: existing.quantity + 1 },
     });
   }
 
-  return db.receivingLine.create({
+  return db().receivingLine.create({
     data: {
       sessionId,
       barcode,
@@ -68,7 +68,7 @@ export async function addScan(
 
 /** Flag a barcode that matched nothing; re-scans bump the count. */
 export function recordUnmatchedScan(sessionId: string, barcode: string) {
-  return db.unmatchedScan.upsert({
+  return db().unmatchedScan.upsert({
     where: { sessionId_barcode: { sessionId, barcode } },
     create: { sessionId, barcode },
     update: { count: { increment: 1 } },
@@ -77,32 +77,32 @@ export function recordUnmatchedScan(sessionId: string, barcode: string) {
 
 /** Resolve (dismiss) an unmatched-scan flag once it's been dealt with. */
 export function resolveUnmatchedScan(id: string) {
-  return db.unmatchedScan.delete({ where: { id } });
+  return db().unmatchedScan.delete({ where: { id } });
 }
 
 export function setLineQuantity(lineId: string, quantity: number) {
   if (quantity <= 0) {
-    return db.receivingLine.delete({ where: { id: lineId } });
+    return db().receivingLine.delete({ where: { id: lineId } });
   }
-  return db.receivingLine.update({
+  return db().receivingLine.update({
     where: { id: lineId },
     data: { quantity },
   });
 }
 
 export function setLinePrice(lineId: string, price: string) {
-  return db.receivingLine.update({
+  return db().receivingLine.update({
     where: { id: lineId },
     data: { currentPrice: price },
   });
 }
 
 export function removeLine(lineId: string) {
-  return db.receivingLine.delete({ where: { id: lineId } });
+  return db().receivingLine.delete({ where: { id: lineId } });
 }
 
 export function markCommitted(sessionId: string, locationId: string) {
-  return db.receivingSession.update({
+  return db().receivingSession.update({
     where: { id: sessionId },
     data: { status: "committed", committedAt: new Date(), locationId },
   });

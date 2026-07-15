@@ -1,17 +1,21 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
+import type {
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "@remix-run/cloudflare";
 import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
-import { authenticate } from "../shopify.server";
+import { getShopify } from "../shopify.server";
+import { resolveEnv } from "../env.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+  await getShopify(context).authenticate.admin(request);
 
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  return { apiKey: resolveEnv(context).SHOPIFY_API_KEY || "" };
 };
 
 export default function App() {

@@ -19,10 +19,13 @@ An embedded Shopify admin app for barcode-driven inventory receiving:
 
 ## Stack
 
-Same stack as Shopify's official app template: [Remix](https://remix.run) +
+Runs on **Cloudflare Workers**: [Remix](https://remix.run) +
 [`@shopify/shopify-app-remix`](https://shopify.dev/docs/api/shopify-app-remix)
 (embedded auth, session tokens) + [Polaris](https://polaris.shopify.com) UI +
-Prisma/SQLite for session + receiving-session storage.
+Prisma on **Cloudflare D1** (via `@prisma/adapter-d1`) for session +
+receiving-session storage. Local dev uses a local D1 automatically (miniflare
+through Vite's Cloudflare dev proxy), so `npm run dev` needs no Cloudflare
+account at all.
 
 ```
 app/
@@ -54,6 +57,7 @@ Prereqs: Node 20.10+, a [Shopify Partner account](https://partners.shopify.com)
 
 ```bash
 npm install
+npm run setup      # prisma generate + create local D1 tables
 npm run dev        # shopify app dev — creates/links the app, tunnels, installs on your dev store
 ```
 
@@ -89,6 +93,30 @@ npm run typecheck
 npm test           # vitest: margin math + ZPL generation
 ```
 
+## Deploying to Cloudflare
+
+One-time setup on the Cloudflare account:
+
+```bash
+npx wrangler login
+npx wrangler d1 create receiving-app     # paste the database_id into wrangler.toml
+npx wrangler d1 migrations apply DB --remote
+npx wrangler secret put SHOPIFY_API_SECRET
+```
+
+Fill in `SHOPIFY_API_KEY` and `SHOPIFY_APP_URL` (the workers.dev or custom
+domain URL) under `[vars]` in `wrangler.toml`, set the same URL as the app URL
+in the Shopify Dev Dashboard (or `shopify.app.toml` + `npm run deploy:shopify`),
+then:
+
+```bash
+npm run deploy    # vite build + wrangler deploy
+```
+
+New database migrations: create them with
+`npx prisma migrate diff --from-local-d1 --to-schema-datamodel prisma/schema.prisma --script > migrations/000X_name.sql`,
+then `wrangler d1 migrations apply DB --local` (dev) / `--remote` (prod).
+
 ## Notes / next steps
 
 - **Multiple matches per barcode** are surfaced for manual pick; **unknown
@@ -101,5 +129,5 @@ npm test           # vitest: margin math + ZPL generation
   apply at commit. That split is intentional: prices need to be right before
   labels print, quantities shouldn't hit the storefront until the session is
   verified.
-- The dev database is SQLite; swap `prisma/schema.prisma` datasource to
-  Postgres/MySQL for production hosting.
+- Money fields are stored as decimal strings (Shopify's Money format); all
+  arithmetic goes through `app/services/margin.ts`.

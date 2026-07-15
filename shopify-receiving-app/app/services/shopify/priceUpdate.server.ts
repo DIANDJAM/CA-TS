@@ -30,7 +30,7 @@ export async function updateVariantPrice(
       variants: [{ id: args.variantId, price: args.price }],
     },
   });
-  const json = await response.json();
+  const json = (await response.json()) as any;
   const result = json.data?.productVariantsBulkUpdate;
 
   assertNoUserErrors("productVariantsBulkUpdate", result?.userErrors);

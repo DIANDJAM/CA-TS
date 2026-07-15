@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { Link as RemixLink, useLoaderData } from "@remix-run/react";
 import {
   Badge,
@@ -10,11 +10,11 @@ import {
   Page,
   Text,
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
+import { getShopify } from "../shopify.server";
 import { listSessions } from "../services/receiving.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+  const { session } = await getShopify(context).authenticate.admin(request);
   const sessions = await listSessions(session.shop);
 
   return {

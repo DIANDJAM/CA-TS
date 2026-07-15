@@ -29,6 +29,17 @@ CREATE TABLE "ReceivingSession" (
 );
 
 -- CreateTable
+CREATE TABLE "UnmatchedScan" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "sessionId" TEXT NOT NULL,
+    "barcode" TEXT NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 1,
+    "firstScannedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastScannedAt" DATETIME NOT NULL,
+    CONSTRAINT "UnmatchedScan_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ReceivingSession" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "ReceivingLine" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "sessionId" TEXT NOT NULL,
@@ -40,9 +51,9 @@ CREATE TABLE "ReceivingLine" (
     "variantTitle" TEXT,
     "sku" TEXT,
     "quantity" INTEGER NOT NULL DEFAULT 1,
-    "unitCost" DECIMAL,
-    "originalPrice" DECIMAL NOT NULL,
-    "currentPrice" DECIMAL NOT NULL,
+    "unitCost" TEXT,
+    "originalPrice" TEXT NOT NULL,
+    "currentPrice" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "ReceivingLine_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ReceivingSession" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -50,6 +61,12 @@ CREATE TABLE "ReceivingLine" (
 
 -- CreateIndex
 CREATE INDEX "ReceivingSession_shop_status_idx" ON "ReceivingSession"("shop", "status");
+
+-- CreateIndex
+CREATE INDEX "UnmatchedScan_sessionId_idx" ON "UnmatchedScan"("sessionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UnmatchedScan_sessionId_barcode_key" ON "UnmatchedScan"("sessionId", "barcode");
 
 -- CreateIndex
 CREATE INDEX "ReceivingLine_sessionId_idx" ON "ReceivingLine"("sessionId");

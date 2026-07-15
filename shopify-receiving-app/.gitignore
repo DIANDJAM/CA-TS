@@ -9,6 +9,8 @@ prisma/*.db-journal
 prisma/dev.sqlite
 prisma/dev.sqlite-journal
 .shopify/
+.wrangler/
+.dev.vars
 *.log
 .cache/
 .vite/

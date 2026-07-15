@@ -1,0 +1,35 @@
+# Cloudflare Workers configuration.
+#
+# One-time setup on your Cloudflare account:
+#   npx wrangler d1 create receiving-app          # then paste database_id below
+#   npx wrangler d1 migrations apply DB --remote  # create tables in production
+#   npx wrangler secret put SHOPIFY_API_SECRET
+# Non-secret config (SHOPIFY_API_KEY, SHOPIFY_APP_URL, SCOPES) lives in [vars].
+# Local dev (`npm run dev` / `wrangler dev`) uses a local D1 automatically.
+
+name = "inventory-receiving"
+main = "./server.ts"
+compatibility_date = "2026-04-01"
+# nodejs_compat provides Buffer/process.env etc. and lets the Shopify SDK and
+# Prisma run on workerd. With this compatibility date, plain-text bindings and
+# secrets are surfaced on process.env automatically.
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./build/client"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "receiving-app"
+database_id = "REPLACE-AFTER-wrangler-d1-create"
+migrations_dir = "migrations"
+
+[vars]
+# Filled in for production deploys; local dev gets these from the Shopify CLI.
+SHOPIFY_API_KEY = ""
+SHOPIFY_APP_URL = ""
+SCOPES = "read_products,write_products,read_inventory,write_inventory,read_locations"
+
+[observability]
+enabled = true

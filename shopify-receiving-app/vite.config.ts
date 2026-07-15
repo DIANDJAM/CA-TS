@@ -1,8 +1,11 @@
-import { vitePlugin as remix } from "@remix-run/dev";
+import {
+  vitePlugin as remix,
+  cloudflareDevProxyVitePlugin,
+} from "@remix-run/dev";
 import { defineConfig, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-declare module "@remix-run/node" {
+declare module "@remix-run/cloudflare" {
   interface Future {
     v3_singleFetch: true;
   }
@@ -53,6 +56,9 @@ export default defineConfig({
     },
   },
   plugins: [
+    // Runs loaders/actions against local Cloudflare bindings (D1 via
+    // miniflare) during `vite dev`, matching the production Workers runtime.
+    cloudflareDevProxyVitePlugin(),
     remix({
       ignoredRouteFiles: ["**/.*"],
       future: {
@@ -68,6 +74,12 @@ export default defineConfig({
   ],
   build: {
     assetsInlineLimit: 0,
+  },
+  ssr: {
+    // Pre-bundle Shopify packages into the server build: wrangler's esbuild
+    // can't parse their `import ... with { type: "json" }` syntax. Prisma
+    // stays external so wrangler resolves its workerd/wasm variant.
+    noExternal: [/^@shopify\//, "isbot"],
   },
   optimizeDeps: {
     include: ["@shopify/app-bridge-react", "@shopify/polaris"],

@@ -1,0 +1,6 @@
+# Tells `shopify app dev` how to run this web process.
+roles = ["web"]
+
+[commands]
+# Vite dev server with the Cloudflare dev proxy (local D1 via miniflare).
+dev = "npx vite dev"

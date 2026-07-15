@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+} from "@remix-run/cloudflare";
 import { useFetcher, useLoaderData, useRevalidator } from "@remix-run/react";
 import {
   Badge,
@@ -18,7 +21,7 @@ import {
   TextField,
 } from "@shopify/polaris";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { authenticate } from "../shopify.server";
+import { getShopify } from "../shopify.server";
 import {
   addScan,
   getSession,
@@ -60,8 +63,14 @@ interface LineDto {
   currentPrice: string;
 }
 
-export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
+export const loader = async ({
+  request,
+  params,
+  context,
+}: LoaderFunctionArgs) => {
+  const { admin, session } = await getShopify(context).authenticate.admin(
+    request,
+  );
   const receivingSession = await getSession(session.shop, params.id!);
   if (!receivingSession) {
     throw new Response("Receiving session not found", { status: 404 });
@@ -103,8 +112,14 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   };
 };
 
-export const action = async ({ request, params }: ActionFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
+export const action = async ({
+  request,
+  params,
+  context,
+}: ActionFunctionArgs) => {
+  const { admin, session } = await getShopify(context).authenticate.admin(
+    request,
+  );
   const receivingSession = await getSession(session.shop, params.id!);
   if (!receivingSession) {
     throw new Response("Receiving session not found", { status: 404 });

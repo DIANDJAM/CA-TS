@@ -23,7 +23,7 @@ export async function listLocations(
   admin: AdminGraphqlClient,
 ): Promise<ShopLocation[]> {
   const response = await admin.graphql(LOCATIONS_QUERY);
-  const json = await response.json();
+  const json = (await response.json()) as any;
   const nodes: any[] = json.data?.locations?.nodes ?? [];
   return nodes.map((node) => ({
     id: node.id,

@@ -59,7 +59,7 @@ export async function commitReceiving(
       },
     },
   });
-  const json = await response.json();
+  const json = (await response.json()) as any;
   const result = json.data?.inventoryAdjustQuantities;
 
   assertNoUserErrors("inventoryAdjustQuantities", result?.userErrors);

@@ -1,7 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
+// Cloudflare D1 (SQLite). At runtime the client connects through
+// @prisma/adapter-d1 with the DB binding; this url is only used by the
+// Prisma CLI for generating migration SQL locally.
 datasource db {
   provider = "sqlite"
   url      = "file:dev.sqlite"
@@ -72,9 +76,11 @@ model ReceivingLine {
   variantTitle    String?
   sku             String?
   quantity        Int              @default(1)
-  unitCost        Decimal? // cost per item at scan time (null if not set in Shopify)
-  originalPrice   Decimal // price at scan time
-  currentPrice    Decimal // price after any margin adjustment in this session
+  // Money kept as decimal strings (Shopify's Money format) — the app only does
+  // arithmetic through services/margin.ts, and D1/SQLite has no decimal type.
+  unitCost        String? // cost per item at scan time (null if not set in Shopify)
+  originalPrice   String // price at scan time
+  currentPrice    String // price after any margin adjustment in this session
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 

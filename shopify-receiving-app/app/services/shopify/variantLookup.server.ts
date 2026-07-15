@@ -68,7 +68,7 @@ export async function findVariantsByBarcode(
   const response = await admin.graphql(VARIANTS_BY_BARCODE_QUERY, {
     variables: { query: `barcode:${JSON.stringify(sanitized)}` },
   });
-  const json = await response.json();
+  const json = (await response.json()) as any;
   const nodes: any[] = json.data?.productVariants?.nodes ?? [];
 
   return nodes
