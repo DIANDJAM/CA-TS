@@ -95,6 +95,12 @@ npm test           # vitest: margin math + ZPL generation
 
 ## Deploying to Cloudflare
 
+This app is intended to run in its **own dedicated Cloudflare account**
+(separate from any agency infrastructure): run `npx wrangler login` with that
+account before the steps below, and keep the D1 database, secrets, and Worker
+there. Nothing in the code ties it to a specific account — `wrangler` deploys
+to whoever is logged in.
+
 One-time setup on the Cloudflare account:
 
 ```bash
